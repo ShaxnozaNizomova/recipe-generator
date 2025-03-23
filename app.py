@@ -1,120 +1,54 @@
 import streamlit as st
-from recipe_fetcher import get_recipes, get_recipe_details
-
-# Correct Text Colors for Readability
-st.markdown(
-    """
-    <style>
-        /* Background */
-        .stApp {
-            background-color: #F5DEB3; /* Warm wheat */
-        }
-
-        /* Headings */
-        h1, h2, h3 {
-            color: #4A2C2A; /* Dark brown */
-            font-family: 'Poppins', sans-serif;
-        }
-
-        /* General Text */
-        p, span, div {
-            color: #5C4033 !important; /* Medium brown */
-            font-size: 16px;
-        }
-
-        /* Input Box */
-        .stTextInput>div>div>input {
-            border: 2px solid #D2691E; /* Warm orange */
-            border-radius: 10px;
-            padding: 10px;
-            font-size: 16px;
-            background-color: white;
-            color: #4A2C2A; /* Dark brown */
-        }
-
-        /* Buttons */
-        .stButton>button {
-            background-color: #D2691E; /* Warm orange */
-            color: white;
-            border-radius: 10px;
-            font-size: 16px;
-            padding: 12px;
-            transition: 0.3s;
-            font-weight: bold;
-        }
-
-        .stButton>button:hover {
-            background-color: #A0522D; /* Darker brown */
-        }
-
-        /* Recipe Cards */
-        .recipe-container {
-            background-color: #FAE5D3; /* Light beige */
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 2px 2px 15px rgba(0, 0, 0, 0.15);
-            margin-bottom: 20px;
-        }
-
-        .recipe-title {
-            font-size: 22px;
-            color: #4A2C2A; /* Dark brown */
-            font-weight: bold;
-        }
-
-        .recipe-info {
-            font-size: 18px;
-            color: #5C4033; /* Medium brown */
-        }
-
-        .recipe-link {
-            font-size: 16px;
-            font-weight: bold;
-            color: #D2691E; /* Orange */
-            text-decoration: none;
-        }
-
-        .recipe-link:hover {
-            text-decoration: underline;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+from spoonacular_recipe_fetcher import fetch_recipes, fetch_recipe_details
 
 def main():
-    st.title("🍽️ AI Recipe Generator")
+    st.set_page_config(page_title="Recipe Generator", layout="wide")
 
-    ingredients = st.text_input("Enter ingredients (comma-separated):")
+    # Load custom CSS
+    with open("styles.css") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+    # Title
+    title_text = "Recipe Generator"
+    animated_title = "".join(f"<span>{char}</span>" for char in title_text)
+    st.markdown(f"<h1 class='animated-title'>{animated_title}</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitle'>Find the best recipes based on your preferences!</p>", unsafe_allow_html=True)
+
+    # Sidebar for filters
+    with st.sidebar:
+        st.header("Filter Your Search")
+        query = st.text_input("Enter an ingredient:")
+        diet = st.selectbox("Diet Preference:", ["None", "Vegetarian", "Vegan", "Gluten-Free"])
+        meal_type = st.selectbox("Meal Type:", ["None", "Breakfast", "Lunch", "Dinner"])
+        calories = st.slider("Max Calories:", 50, 1000, 500)
 
     if st.button("Find Recipes"):
-        recipes = get_recipes(ingredients)
-
-        if recipes:
-            for recipe in recipes:
-                recipe_id = recipe['id']
-                details = get_recipe_details(recipe_id)
-
-                st.markdown('<div class="recipe-container">', unsafe_allow_html=True)
-                st.markdown(f'<h2 class="recipe-title">{recipe["title"]}</h2>', unsafe_allow_html=True)
-                st.image(recipe['image'], width=350)
-                st.markdown(f'<p class="recipe-info"><strong>Calories:</strong> {details["calories"]} kcal</p>', unsafe_allow_html=True)
-
-                st.write("### Ingredients:")
-                for item in details["ingredients"]:
-                    st.write(f"- {item}")
-
-                st.write("### Instructions:")
-                st.write(details["instructions"])
-
-                st.markdown(
-                    f'<a class="recipe-link" href="{details["source_url"]}" target="_blank">📖 Full Recipe Here</a>',
-                    unsafe_allow_html=True
-                )
-                st.markdown('</div>', unsafe_allow_html=True)
-
+        # Check if query is empty or contains only spaces
+        if not query.strip():
+            st.warning("Please enter at least one ingredient.")
         else:
-            st.error("No recipes found. Try different ingredients!")
+            # Proceed to fetch recipes if query is valid
+            recipes = fetch_recipes(query, diet, meal_type, calories)
+
+            if recipes:
+                st.markdown("<h2>Recipes Found:</h2>", unsafe_allow_html=True)
+                for recipe in recipes:
+                    details = fetch_recipe_details(recipe["id"])
+                    ingredients_list = "".join(f"<li>{ing}</li>" for ing in details["ingredients"])
+
+                    st.markdown(f"""
+                        <div class='recipe-card'>
+                            <img src='{details["image"]}' class='recipe-img'>
+                            <h3>{details["title"]}</h3>
+                            <p><b>Calories:</b> {details["calories"]} kcal</p>
+                            <p><b>Ingredients:</b></p>
+                            <ul>{ingredients_list}</ul>
+                            <p><b>Instructions:</b></p>
+                            <p>{details["instructions"]}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.warning("No recipes found. Try different filters.")
 
 if __name__ == "__main__":
     main()
