@@ -1,5 +1,6 @@
 import streamlit as st
 from spoonacular_recipe_fetcher import fetch_recipes, fetch_recipe_details
+from openai_recipe_generator import generate_recipe_with_cohere  
 
 def main():
     st.set_page_config(page_title="Recipe Generator", layout="wide")
@@ -21,13 +22,12 @@ def main():
         diet = st.selectbox("Diet Preference:", ["None", "Vegetarian", "Vegan", "Gluten-Free"])
         meal_type = st.selectbox("Meal Type:", ["None", "Breakfast", "Lunch", "Dinner"])
         calories = st.slider("Max Calories:", 50, 1000, 500)
+        use_ai = st.checkbox("Generate recipe using OpenAI (if no results found)", value=True)
 
     if st.button("Find Recipes"):
-        # Check if query is empty or contains only spaces
         if not query.strip():
             st.warning("Please enter at least one ingredient.")
         else:
-            # Proceed to fetch recipes if query is valid
             recipes = fetch_recipes(query, diet, meal_type, calories)
 
             if recipes:
@@ -48,7 +48,13 @@ def main():
                         </div>
                     """, unsafe_allow_html=True)
             else:
-                st.warning("No recipes found. Try different filters.")
+                st.warning("No recipes found using Spoonacular.")
+                if use_ai:
+                  st.info("Generating recipe using AI (Cohere)...")
+                  ai_recipe = generate_recipe_with_cohere(query)
+                  st.markdown("<h2>AI-Generated Recipe:</h2>", unsafe_allow_html=True)
+                  st.markdown(f"<div class='recipe-card'><p>{ai_recipe}</p></div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
+    
